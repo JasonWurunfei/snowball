@@ -3,10 +3,18 @@ storage:
 
 watchlist:
   stocks:
-  - AAPL
-  - GOOGL
-  - MSFT
-  - AMZN
-  - TSLA
-
-
+    AAPL:
+      exchange: NASDAQ
+      currency: USD
+    GOOGL:
+      exchange: NASDAQ
+      currency: USD
+    MSFT:
+      exchange: NASDAQ
+      currency: USD
+    AMZN:
+      exchange: NASDAQ
+      currency: USD
+    TSLA:
+      exchange: NASDAQ
+      currency: USD
