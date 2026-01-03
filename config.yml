@@ -1,0 +1,12 @@
+storage:
+  path: ./data/
+
+watchlist:
+  stocks:
+  - AAPL
+  - GOOGL
+  - MSFT
+  - AMZN
+  - TSLA
+
+
