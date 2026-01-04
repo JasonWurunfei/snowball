@@ -6,6 +6,7 @@ import os
 from time import sleep
 
 import pandas as pd
+import pandas_market_calendars as mcal
 import yaml
 import yfinance as yf
 
@@ -18,13 +19,17 @@ class Roller:
             self.config = yaml.safe_load(f)
 
         # load watchlist symbols to download ohlcv data
-        self.symbols = list(self.config["watchlist"]["stocks"].keys())
+        self.categories = list(self.config["watchlist"].keys())
+        self.symbols = []
+        for category in self.categories:
+            self.symbols.extend(list(self.config["watchlist"][category].keys()))
         # create storage path if not exists
         # root path
         self.storage_path = self.config["storage"]["path"]
         os.makedirs(self.storage_path, exist_ok=True)
-        # stock data path
-        os.makedirs(os.path.join(self.storage_path, "stocks"), exist_ok=True)
+        # symbol data paths
+        for category in self.categories:
+            os.makedirs(os.path.join(self.storage_path, category), exist_ok=True)
         # load storage meta
         self._load_storage_meta()
 
@@ -34,7 +39,8 @@ class Roller:
         # check if there are new symbols added to watchlist
         existing_symbols = []
         for symbol in self.symbols:
-            if symbol not in self.meta["stocks"]:
+            category = self._get_symbol_category(symbol)
+            if symbol not in self.meta.get(category, {}):
                 print(
                     f"New symbol detected: {symbol}, downloading all available 1m OHLCV data..."
                 )
@@ -48,8 +54,17 @@ class Roller:
 
         # download latest data for existing symbols
         d = date.today() - timedelta(days=1)  # download data for yesterday
+
+        trading_symbols = []
+        for symbol in existing_symbols:
+            if self._is_trading_day_for_symbol(symbol, d):
+                trading_symbols.append(symbol)
+            else:
+                print(f"{d} is not a trading day for symbol {symbol}, skipping...")
+
+        print(f"Downloading 1m OHLCV data for {d} for symbols: {trading_symbols}...")
         data = yf.download(
-            tickers=existing_symbols,
+            tickers=trading_symbols,
             start=d,
             end=d + timedelta(days=1),
             interval="1m",
@@ -57,11 +72,12 @@ class Roller:
         )
 
         # save new data to storage
-        for symbol in existing_symbols:
+        for symbol in trading_symbols:
             if data[symbol].dropna().empty:
                 continue
             symbol_data = data[symbol]
-            dir_path = os.path.join(self.storage_path, "stocks", f"{symbol}")
+            category = self._get_symbol_category(symbol)
+            dir_path = os.path.join(self.storage_path, category, f"{symbol}")
             file_path = os.path.join(
                 dir_path, f"{d.strftime('%Y-%m-%d')}_1m_ohlcv.parquet"
             )
@@ -105,12 +121,14 @@ class Roller:
             )
             daily_data.to_parquet(file_path)
 
+        # update symbol meta file
+        category = self._get_symbol_category(symbol)
         self._update_symbol_meta_file(
             symbol,
             {
                 "earliest_date": earliest_date.strftime("%Y-%m-%d"),
                 "latest_date": latest_date.strftime("%Y-%m-%d"),
-                **self.config["watchlist"]["stocks"][symbol],
+                **self.config["watchlist"][category][symbol],
             },
         )
 
@@ -126,7 +144,8 @@ class Roller:
             self.meta = {}
             self.meta["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.meta["last_updated"] = self.meta["created_at"]
-            self.meta.setdefault("stocks", {})
+            for category in self.categories:
+                self.meta.setdefault(category, {})
             self._scan_storage_meta()
             # save initial meta
             self._save_storage_meta()
@@ -141,16 +160,19 @@ class Roller:
 
     def _scan_storage_meta(self):
         """Scan storage metadata."""
-        stocks_dir = os.path.join(self.storage_path, "stocks")
-        for symbol in os.listdir(stocks_dir):
-            symbol_dir = os.path.join(stocks_dir, symbol)
-            if os.path.isdir(symbol_dir):
-                # load meta file if exists
-                meta_file_path = os.path.join(symbol_dir, "meta.yml")
-                if os.path.exists(meta_file_path):
-                    with open(meta_file_path, "r", encoding="utf-8") as f:
-                        symbol_meta = yaml.safe_load(f)
-                    self.meta["stocks"][symbol] = symbol_meta
+        for category in self.categories:
+            category_dir = os.path.join(self.storage_path, category)
+            for symbol in os.listdir(category_dir):
+                symbol_dir = os.path.join(category_dir, symbol)
+                if os.path.isdir(symbol_dir):
+                    # load meta file if exists
+                    meta_file_path = os.path.join(symbol_dir, "meta.yml")
+                    if os.path.exists(meta_file_path):
+                        with open(meta_file_path, "r", encoding="utf-8") as f:
+                            symbol_meta = yaml.safe_load(f)
+                        if category not in self.meta:
+                            self.meta[category] = {}
+                        self.meta[category][symbol] = symbol_meta
 
     def _save_storage_meta(self):
         """Save storage metadata."""
@@ -158,15 +180,28 @@ class Roller:
         with open(meta_file_path, "w", encoding="utf-8") as f:
             yaml.dump(self.meta, f)
 
+    def _get_symbol_category(self, symbol: str):
+        """Get category for a given symbol."""
+        for category in self.categories:
+            if symbol in self.config["watchlist"][category]:
+                return category
+        return None
+
     def _create_symbol_dir(self, symbol: str):
         """Create directory for a given symbol."""
-        dir_path = os.path.join(self.storage_path, "stocks", f"{symbol}")
+        category = self._get_symbol_category(symbol)
+        if not category:
+            raise ValueError(f"Symbol {symbol} not found in any category.")
+        dir_path = os.path.join(self.storage_path, category, f"{symbol}")
         os.makedirs(dir_path, exist_ok=True)
         return dir_path
 
     def _update_symbol_meta_file(self, symbol: str, entry: dict = None):
         """Update metadata file for a given symbol."""
-        dir_path = os.path.join(self.storage_path, "stocks", f"{symbol}")
+        category = self._get_symbol_category(symbol)
+        if not category:
+            raise ValueError(f"Symbol {symbol} not found in any category.")
+        dir_path = os.path.join(self.storage_path, category, f"{symbol}")
         meta_file_path = os.path.join(dir_path, "meta.yml")
 
         meta = {"symbol": symbol}
@@ -184,3 +219,14 @@ class Roller:
         else:
             with open(meta_file_path, "w", encoding="utf-8") as f:
                 yaml.dump(meta, f)
+
+    def _is_trading_day_for_symbol(self, symbol: str, d):
+        """Check if a given date is a trading day for a given symbol."""
+        category = self._get_symbol_category(symbol)
+        if not category:
+            raise ValueError(f"Symbol {symbol} not found in any category.")
+        exchange_name = self.config["watchlist"][category][symbol].get("exchange")
+        if not exchange_name:
+            raise ValueError(f"Exchange not specified for symbol {symbol}.")
+        exchange = mcal.get_calendar(exchange_name)
+        return not exchange.valid_days(start_date=d, end_date=d).empty

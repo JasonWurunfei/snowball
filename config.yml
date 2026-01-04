@@ -18,3 +18,129 @@ watchlist:
     TSLA:
       exchange: NASDAQ
       currency: USD
+    1810.HK:
+      exchange: HKEX
+      currency: HKD
+    T:
+      exchange: NYSE
+      currency: USD
+    MCD:
+      exchange: NYSE
+      currency: USD
+    HPQ:
+      exchange: NYSE
+      currency: USD
+    BRK-B:
+      exchange: NYSE
+      currency: USD
+    NVDA:
+      exchange: NASDAQ
+      currency: USD
+    COIN:
+      exchange: NASDAQ
+      currency: USD
+    XOM:
+      exchange: NYSE
+      currency: USD
+    KO:
+      exchange: NYSE
+      currency: USD
+    AMD:
+      exchange: NASDAQ
+      currency: USD
+    LLY:
+      exchange: NYSE
+      currency: USD
+    SIE.DE:
+      exchange: XETR
+      currency: EUR
+    NOVO-B.CO:
+      exchange: XCSE
+      currency: DKK
+
+  commodities:
+    GC=F:
+      exchange: GC          # CME Globex Gold
+      currency: USD
+    SI=F:
+      exchange: SI          # CME Globex Silver
+      currency: USD
+    CL=F:
+      exchange: CL          # CME Globex Crude Oil
+      currency: USD
+    NG=F:
+      exchange: NG          # CME Globex Nat Gas
+      currency: USD
+    ZC=F:
+      exchange: CMEGlobex_Grains
+      currency: USD
+
+  forex:
+    EURUSD=X:
+      exchange: 24/5
+      currency: USD
+    DKKUSD=X:
+      exchange: 24/5
+      currency: USD
+    CNYUSD=X:
+      exchange: 24/5
+      currency: USD
+
+  indices:
+    # US Indices
+    ^GSPC:
+      exchange: NYSE
+      currency: USD
+    ^DJI:
+      exchange: NYSE
+      currency: USD
+    ^IXIC:
+      exchange: NASDAQ
+      currency: USD
+    ^VIX:
+      exchange: NYSE
+      currency: USD
+
+    # European Indices
+    ^FTSE:
+      exchange: XLON
+      currency: GBP
+    ^GDAXI:
+      exchange: XFRA
+      currency: EUR
+    ^FCHI:
+      exchange: XPAR
+      currency: EUR
+
+    # Asian Indices
+    ^N225:
+      exchange: XTKS
+      currency: JPY
+    ^HSI:
+      exchange: HKEX
+      currency: HKD
+    000001.SS:
+      exchange: SSE
+      currency: CNY
+
+  cryptocurrencies:
+    BTC-USD:
+      exchange: 24/7
+      currency: USD
+    ETH-USD:
+      exchange: 24/7
+      currency: USD
+    SOL-USD:
+      exchange: 24/7
+      currency: USD
+
+  bonds:
+    ^TNX:
+      exchange: SIFMAUS
+      currency: USD
+    ^FVX:
+      exchange: SIFMAUS
+      currency: USD
+    ^IRX:
+      exchange: SIFMAUS
+      currency: USD
