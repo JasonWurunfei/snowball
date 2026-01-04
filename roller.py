@@ -91,6 +91,14 @@ class Roller:
         self._update_storage_meta()
         print("Roll completed.")
 
+    def roll_backfill(self):
+        """Backfill all missing 1m OHLCV data for all symbols in watchlist."""
+        for symbol in self.symbols:
+            print(f"Backfilling 1m OHLCV data for symbol {symbol}...")
+            self._download_all_available_1m_ohlcv_for_symbol(symbol)
+        self._update_storage_meta()
+        print("Backfill completed.")
+
     def _download_all_available_1m_ohlcv_for_symbol(self, symbol: str):
         """Download all available 1m OHLCV data for a given symbol."""
         d = date.today() - timedelta(
@@ -124,6 +132,12 @@ class Roller:
 
         # update symbol meta file
         category = self._get_symbol_category(symbol)
+        meta = self.meta.get(category, {}).get(symbol, {})
+        if meta:
+            earliest_date = min(
+                earliest_date, date.fromisoformat(meta.get("earliest_date"))
+            )
+
         self._update_symbol_meta_file(
             symbol,
             {
