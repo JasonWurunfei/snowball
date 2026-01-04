@@ -89,6 +89,7 @@ class Roller:
             )
 
         self._update_storage_meta()
+        print("Roll completed.")
 
     def _download_all_available_1m_ohlcv_for_symbol(self, symbol: str):
         """Download all available 1m OHLCV data for a given symbol."""
