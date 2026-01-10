@@ -99,6 +99,61 @@ class Roller:
         self._update_storage_meta()
         print("Backfill completed.")
 
+    def fill_date(self, target_date: date):
+        """Fill 1m OHLCV data for a given date for all symbols in watchlist."""
+        for symbol in self.symbols:
+            category = self._get_symbol_category(symbol)
+            meta = self.meta.get(category, {}).get(symbol, {})
+            if not meta:
+                print(
+                    f"Symbol {symbol} not found in storage meta, downloading all available 1m OHLCV data..."
+                )
+                self._download_all_available_1m_ohlcv_for_symbol(symbol)
+                continue
+
+            earliest_date = date.fromisoformat(meta.get("earliest_date"))
+            latest_date = date.fromisoformat(meta.get("latest_date"))
+
+            if target_date < earliest_date or target_date > latest_date:
+                print(
+                    f"Target date {target_date} is out of range for symbol {symbol}, skipping..."
+                )
+                continue
+
+            dir_path = os.path.join(self.storage_path, category, f"{symbol}")
+            file_path = os.path.join(
+                dir_path, f"{target_date.strftime('%Y-%m-%d')}_1m_ohlcv.parquet"
+            )
+            if os.path.exists(file_path):
+                print(
+                    f"Data for date {target_date} already exists for symbol {symbol}, skipping..."
+                )
+                continue
+
+            if not self._is_trading_day_for_symbol(symbol, target_date):
+                print(
+                    f"{target_date} is not a trading day for symbol {symbol}, skipping..."
+                )
+                continue
+
+            print(f"Downloading 1m OHLCV data for {target_date} for symbol {symbol}...")
+            data = yf.download(
+                tickers=symbol,
+                start=target_date,
+                end=target_date + timedelta(days=1),
+                interval="1m",
+            )
+
+            if data.dropna().empty:
+                print(f"No data available for {target_date} for symbol {symbol}.")
+                continue
+
+            # save to parquet
+            data.to_parquet(file_path)
+
+        self._update_storage_meta()
+        print("Fill missing date completed.")
+
     def _download_all_available_1m_ohlcv_for_symbol(self, symbol: str):
         """Download all available 1m OHLCV data for a given symbol."""
         d = date.today() - timedelta(
