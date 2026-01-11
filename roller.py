@@ -99,7 +99,7 @@ class Roller:
         self._update_storage_meta()
         print("Backfill completed.")
 
-    def fill_date(self, target_date: date):
+    def fill_date(self, target_date: date, overide: bool = False):
         """Fill 1m OHLCV data for a given date for all symbols in watchlist."""
         for symbol in self.symbols:
             category = self._get_symbol_category(symbol)
@@ -124,7 +124,7 @@ class Roller:
             file_path = os.path.join(
                 dir_path, f"{target_date.strftime('%Y-%m-%d')}_1m_ohlcv.parquet"
             )
-            if os.path.exists(file_path):
+            if os.path.exists(file_path) and not overide:
                 print(
                     f"Data for date {target_date} already exists for symbol {symbol}, skipping..."
                 )
@@ -153,6 +153,39 @@ class Roller:
 
         self._update_storage_meta()
         print("Fill missing date completed.")
+
+    def get_ohlcv_for(self, symbol: str, start_date: date, end_date: date):
+        """Get OHLCV data for a given symbol and date range."""
+        category = self._get_symbol_category(symbol)
+        if not category:
+            raise ValueError(f"Symbol {symbol} not found in any category.")
+
+        dir_path = os.path.join(self.storage_path, category, f"{symbol}")
+        all_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            file_path = os.path.join(
+                dir_path, f"{current_date.strftime('%Y-%m-%d')}_1m_ohlcv.parquet"
+            )
+            if os.path.exists(file_path):
+                daily_data = pd.read_parquet(file_path)
+                all_data.append(daily_data)
+            current_date += timedelta(days=1)
+
+        if all_data:
+            return pd.concat(all_data)
+        else:
+            return pd.DataFrame()  # return empty DataFrame if no data found
+
+    def get_all_ohlcv_for(self, symbol: str):
+        """Get all OHLCV data for a given symbol."""
+        earliest_date = date.fromisoformat(
+            self.meta[self._get_symbol_category(symbol)][symbol]["earliest_date"]
+        )
+        latest_date = date.fromisoformat(
+            self.meta[self._get_symbol_category(symbol)][symbol]["latest_date"]
+        )
+        return self.get_ohlcv_for(symbol, earliest_date, latest_date)
 
     def _download_all_available_1m_ohlcv_for_symbol(self, symbol: str):
         """Download all available 1m OHLCV data for a given symbol."""
